@@ -2,17 +2,42 @@
 
 <mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+      http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081"
                           doc:name="HTTP Listener Configuration"/>
+
+    <kafka:config name="kafka-config" consumerPropertiesFile="kafka-consumer.properties" producerPropertiesFile="kafka-producer.properties" />
     <flow name="mule-demo-filesFlow">
-        <logger level="INFO" doc:name="Logger" category="net.taptech" message="Itr works!!!!"/>
-        <set-payload value="testing" doc:name="Set Payload"/>
+        <logger level="INFO" doc:name="Logger" category="net.taptech" message="It works!!!!"/>
+        <set-payload value="testing-#[java.util.UUID.randomUUID().toString()]" doc:name="Set Payload"/>
+        <kafka:producer config-ref="kafka-config" topic="streams-plaintext-input" key="#[java.util.UUID.randomUUID().toString()]" message="#[payload]" propertyFileOverrides=""/>
     </flow>
     <flow name="mule-demo-filesFlow1">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/test" doc:name="HTTP"/>
+
+        <logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
         <flow-ref name="mule-demo-filesFlow" doc:name="mule-demo-filesFlow"/>
+
+    </flow>
+    <flow name="new-projectFlow">
+        <kafka:simple-consumer config-ref="kafka-config" propertyFileOverrides="#[['consumer.scheduled.delay': '5000']]"/>
+        <logger message="New message #[message] with payload #[payload] " category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
+
+        <choice>
+            <when expression="#[payload.size() > 0]">
+                <foreach doc:name="Foreach" collection="#[payload.iterator()]">
+                    <logger message="New message #[message] with payload #[payload] " category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
+                    <logger message="key => [#[payload.key()]] value => [#[payload.value()]] " category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
+                </foreach>
+            </when>
+            <otherwise>
+                <logger message="No values returned from poll" category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
+            </otherwise>
+        </choice>
+
     </flow>
 </mule>

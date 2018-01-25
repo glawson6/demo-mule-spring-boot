@@ -1,4 +1,4 @@
-package net.taptech.demomulespringboot;
+package net.taptech.demo;
 
 import net.taptech.autoconfiguration.EnableMuleConfiguration;
 import org.slf4j.Logger;

@@ -1,4 +1,4 @@
-package net.taptech.demomulespringboot;
+package net.taptech.demo;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
