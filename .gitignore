@@ -29,3 +29,5 @@ nbdist/
 transaction-logs/
 
 tmlog*
+
+.mule/
