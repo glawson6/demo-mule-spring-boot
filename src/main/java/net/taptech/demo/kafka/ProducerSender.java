@@ -28,7 +28,7 @@ public class ProducerSender {
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
         Producer<String, String> producer = new KafkaProducer<>(props);
-        for (int i = 0; i < 5; i++){
+        for (int i = 0; i < 1; i++){
             Future<RecordMetadata> sent =  producer.send(new ProducerRecord<String, String>("streams-plaintext-input", Integer.toString(i), Integer.toString(i)));
             RecordMetadata recordMetadata =  sent.get();
             System.out.println("RecordMetadata => "+recordMetadata.toString());

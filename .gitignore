@@ -29,3 +29,6 @@ nbdist/
 transaction-logs/
 
 tmlog*
+.mule/
+
+dev-notes.txt

@@ -10,34 +10,40 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081"
                           doc:name="HTTP Listener Configuration"/>
 
-    <kafka:config name="kafka-config" consumerPropertiesFile="kafka-consumer.properties" producerPropertiesFile="kafka-producer.properties" />
-    <flow name="mule-demo-filesFlow">
-        <logger level="INFO" doc:name="Logger" category="net.taptech" message="It works!!!!"/>
-        <set-payload value="testing-#[java.util.UUID.randomUUID().toString()]" doc:name="Set Payload"/>
-        <kafka:producer config-ref="kafka-config" topic="streams-plaintext-input" key="#[java.util.UUID.randomUUID().toString()]" message="#[payload]" propertyFileOverrides=""/>
-    </flow>
+    <kafka:config name="kafka-config" consumerPropertiesFile="kafka-consumer.properties"
+                  producerPropertiesFile="kafka-producer.properties"/>
+
     <flow name="mule-demo-filesFlow1">
-        <http:listener config-ref="HTTP_Listener_Configuration" path="/test" doc:name="HTTP"/>
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/payload" allowedMethods="POST" doc:name="HTTP"/>
 
-        <logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
-        <flow-ref name="mule-demo-filesFlow" doc:name="mule-demo-filesFlow"/>
-
+        <logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO"
+                doc:name="Consumed message logger"/>
+        <object-to-string-transformer/>
+        <set-variable variableName="recordKey" value="#[java.util.UUID.randomUUID().toString()]"/>
+        <kafka:producer config-ref="kafka-config" topic="streams-plaintext-input" key="#[flowVars['recordKey']]"
+                        message="#[payload]"/>
+        <object-to-string-transformer/>
     </flow>
-    <flow name="new-projectFlow">
-        <kafka:simple-consumer config-ref="kafka-config" propertyFileOverrides="#[['consumer.scheduled.delay': '5000']]"/>
-        <logger message="New message #[message] with payload #[payload] " category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
 
-        <choice>
-            <when expression="#[payload.size() > 0]">
-                <foreach doc:name="Foreach" collection="#[payload.iterator()]">
-                    <logger message="New message #[message] with payload #[payload] " category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
-                    <logger message="key => [#[payload.key()]] value => [#[payload.value()]] " category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
-                </foreach>
-            </when>
-            <otherwise>
-                <logger message="No values returned from poll" category="org.mule.module.kafka" level="INFO" doc:name="Consumed message logger"/>
-            </otherwise>
-        </choice>
+    <flow name="mule-demo-filesFlow2">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/payload" allowedMethods="GET" doc:name="HTTP"/>
+        <set-variable variableName="offset" value="#[message.inboundProperties.'http.query.params'.offset]"/>
+        <set-variable variableName="partition" value="#[message.inboundProperties.'http.query.params'.partition]"/>
+        <set-variable variableName="topic" value="#[message.inboundProperties.'http.query.params'.topic]"/>
 
+        <logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO"
+                doc:name="Consumed message logger"/>
+        <kafka:seek config-ref="kafka-config" partition="#[flowVars.partition]" topic="#[flowVars.topic]" offset="#[flowVars.offset]"/>
+        <object-to-string-transformer/>
     </flow>
+
+
+    <flow name="streams-plaintext-input">
+        <kafka:consumer config-ref="kafka-config" topic="streams-plaintext-input"/>
+        <foreach doc:name="Foreach" collection="#[payload.iterator()]">
+            <logger message="consumer received from topic [#[payload.topic()]] key => [#[payload.key()]] value => [#[payload.value()]] "
+                    category="net.taptech.kafka.mule.word-count-flow" level="INFO" doc:name="Consumed message logger"/>
+        </foreach>
+    </flow>
+
 </mule>
