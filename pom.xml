@@ -235,7 +235,7 @@
 					<repository>gregorylawson.net:5043/repository/taptech-docker</repository>
 					<tag>latest</tag>
 					<useMavenSettingsForAuth>true</useMavenSettingsForAuth>
-					<tag>${project.version}</tag>
+					<tag>${project.build.finalName}-${project.version}</tag>
 					<buildArgs>
 						<JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
 					</buildArgs>
