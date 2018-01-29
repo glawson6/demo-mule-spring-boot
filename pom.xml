@@ -241,7 +241,7 @@
 					</buildArgs>
 				</configuration>
 			</plugin>
-			<!-- gregorylawson.net:5043/repository/taptech-docker:0.0.1-SNAPSHOT is final docker image-->
+			<!-- gregorylawson.net:5043/repository/taptech-docker:demo-mule-spring-boot-0.0.1-SNAPSHOT is final docker image-->
 		</plugins>
 	</build>
 
