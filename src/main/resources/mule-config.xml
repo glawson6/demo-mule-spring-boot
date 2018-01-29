@@ -3,10 +3,12 @@
 <mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"
+      xmlns:json="http://www.mulesoft.org/schema/mule/json"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
       http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081"
                           doc:name="HTTP Listener Configuration"/>
 
@@ -22,7 +24,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
         <set-variable variableName="recordKey" value="#[java.util.UUID.randomUUID().toString()]"/>
         <kafka:producer config-ref="kafka-config" topic="streams-plaintext-input" key="#[flowVars['recordKey']]"
                         message="#[payload]"/>
-        <object-to-string-transformer/>
+        <transformer ref="recordMetadataListToJsonTransformer"/>
     </flow>
 
     <flow name="mule-demo-filesFlow2">
@@ -33,13 +35,15 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 
         <logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO"
                 doc:name="Consumed message logger"/>
-        <kafka:seek config-ref="kafka-config" partition="#[flowVars.partition]" topic="#[flowVars.topic]" offset="#[flowVars.offset]"/>
-        <object-to-string-transformer/>
+        <kafka:seek config-ref="kafka-config" partition="#[flowVars.partition]" topic="#[flowVars.topic]"
+                    offset="#[flowVars.offset]"/>
+        <transformer ref="consumerRecordListToJsonTransformer"/>
     </flow>
 
 
     <flow name="streams-plaintext-input">
-        <kafka:consumer config-ref="kafka-config" topic="streams-plaintext-input"/>
+        <kafka:consumer config-ref="kafka-config" topic="streams-plaintext-input"
+                        propertyFileOverrides="kafka-alternate.properties"/>
         <foreach doc:name="Foreach" collection="#[payload.iterator()]">
             <logger message="consumer received from topic [#[payload.topic()]] key => [#[payload.key()]] value => [#[payload.value()]] "
                     category="net.taptech.kafka.mule.word-count-flow" level="INFO" doc:name="Consumed message logger"/>
