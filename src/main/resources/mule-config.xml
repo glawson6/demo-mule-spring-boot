@@ -9,7 +9,7 @@
       http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
-    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081"
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8080"
                           doc:name="HTTP Listener Configuration"/>
 
     <kafka:config name="kafka-config" consumerPropertiesFile="kafka-consumer.properties"
@@ -21,9 +21,12 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO"
                 doc:name="Consumed message logger"/>
         <object-to-string-transformer/>
+        <set-variable variableName="headers" value="#[{'key':'value', 'key1':'value1'}]"/>
         <set-variable variableName="recordKey" value="#[java.util.UUID.randomUUID().toString()]"/>
         <kafka:producer config-ref="kafka-config" topic="streams-plaintext-input" key="#[flowVars['recordKey']]"
-                        message="#[payload]"/>
+                        message="#[payload]" >
+            <kafka:headers ref="#[flowVars.headers]"/>
+        </kafka:producer>
         <transformer ref="recordMetadataListToJsonTransformer"/>
     </flow>
 
