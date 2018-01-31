@@ -4,16 +4,20 @@
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"
       xmlns:json="http://www.mulesoft.org/schema/mule/json"
+      xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
       http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
 http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8080"
                           doc:name="HTTP Listener Configuration"/>
 
     <kafka:config name="kafka-config" consumerPropertiesFile="kafka-consumer.properties"
-                  producerPropertiesFile="kafka-producer.properties"/>
+                  producerPropertiesFile="kafka-producer.properties">
+
+    </kafka:config>
 
     <flow name="mule-demo-filesFlow1">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/payload" allowedMethods="POST" doc:name="HTTP"/>
@@ -29,6 +33,74 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         </kafka:producer>
         <transformer ref="recordMetadataListToJsonTransformer"/>
     </flow>
+
+    <flow name="mule-demo-parallel-processing">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/parallel" allowedMethods="POST" doc:name="HTTP"/>
+        <object-to-string-transformer/>
+        <set-variable variableName="recordKey" value="#[java.util.UUID.randomUUID().toString()]"/>
+        <set-payload value="#[['a','b','c','d','e']]"/>
+        <request-reply timeout="180000"> <!-- timeout in 3 minutes -->
+            <vm:outbound-endpoint path="one-string-for-processing-vm-2" doc:name="send-one-string-for-processing-vm">
+                <message-properties-transformer scope="outbound">
+                    <delete-message-property key="MULE_REPLYTO" />
+                </message-properties-transformer>
+                <!--logger message="New message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO"
+                        doc:name="Consumed message logger"/-->
+                <collection-splitter enableCorrelation="ALWAYS" />
+            </vm:outbound-endpoint>
+            <vm:inbound-endpoint path="aggregate-processed-strings-vm" doc:name="aggregate-processed-strings-vm">
+                <collection-aggregator timeout="120000" /> <!-- timeout in 2 minutes -->
+            </vm:inbound-endpoint>
+        </request-reply>
+        <!--
+        <kafka:producer config-ref="kafka-config" topic="streams-plaintext-input" key="#[flowVars['recordKey']]"
+                        message="#[payload]" >
+            <kafka:headers ref="#[flowVars.headers]"/>
+        </kafka:producer>
+        -->
+        <object-to-string-transformer/>
+    </flow>
+
+    <flow name="capitalcase-one-string-flow" doc:name="capitalcase-one-string-flow">
+        <vm:inbound-endpoint path="one-string-for-processing-vm" doc:name="receive-one-string-to-convert-to-capital-case-vm" />
+        <async>
+            <flow-ref name="capitalize-subflow"/>
+            <vm:outbound-endpoint path="aggregate-processed-strings-vm" doc:name="send-back-capitalcase-string-for-aggregation-vm" />
+        </async>
+    </flow>
+
+    <sub-flow name="capitalize-subflow">
+        <logger message="***CapitalCase #[payload] at #[System.currentTimeMillis()] using #[Thread.currentThread().getName()]" level="INFO" />
+        <expression-transformer expression="#[payload.toUpperCase()]" doc:name="Change to Uppercase" />
+        <logger message="***CapitalCased #[payload] at #[System.currentTimeMillis()]" level="INFO" />
+    </sub-flow>
+
+    <flow name="streams-capitlized-output-flow">
+        <vm:inbound-endpoint path="one-string-for-processing-vm-2" doc:name="receive-one-string-to-convert-to-capital-case-vm" />
+        <copy-properties propertyName="MULE*"/>
+        <set-variable variableName="recordKey" value="#[java.util.UUID.randomUUID().toString()]"/>
+        <kafka:producer config-ref="kafka-config" topic="streams-capitlized-input" key="#[flowVars['recordKey']]"
+                        message="#[payload]" >
+            <kafka:headers ref="#[message.outboundProperties]"/>
+        </kafka:producer>
+    </flow>
+
+    <flow name="streams-capitlized-input-flow">
+        <kafka:consumer config-ref="kafka-config" topic="streams-capitlized-input" threads="10"
+                        propertyFileOverrides="kafka-single-poll-consumer.properties"/>
+        <foreach doc:name="Foreach" collection="#[payload.iterator()]">
+            <!--logger message="payload => #[payload] consumer received from topic [#[payload.topic()]] key => [#[payload.key()]] value => [#[payload.value()]] "
+                    category="net.taptech.kafka.mule.word-count-flow" level="INFO" doc:name="Consumed message logger"/-->
+            <set-variable variableName="originalPayload" value="#[payload]"/>
+            <transformer ref="recordHeadersToMapTransformer"/>
+            <set-payload value="#[flowVars.originalPayload.value()]"/>
+            <flow-ref name="capitalize-subflow"/>
+            <!--logger message="headers => #[flowVars.headers] message => #[message]"
+                    category="net.taptech.kafka.mule.word-count-flow" level="INFO" doc:name="Consumed message logger"/-->
+            <vm:outbound-endpoint path="aggregate-processed-strings-vm" doc:name="send-back-capitalcase-string-for-aggregation-vm" />
+        </foreach>
+    </flow>
+
 
     <flow name="mule-demo-filesFlow2">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/payload" allowedMethods="GET" doc:name="HTTP"/>

@@ -41,6 +41,6 @@ class RecordMetadataListToJsonTransformer extends AbstractMessageTransformer{
     }
 
     RecordMetadataListToJsonTransformer() {
-        logger.info("Created ConsumerRecordListToJsonTransformer")
+        logger.info("Created RecordMetadataListToJsonTransformer")
     }
 }

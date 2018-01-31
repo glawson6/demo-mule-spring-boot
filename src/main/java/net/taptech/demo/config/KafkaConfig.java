@@ -1,11 +1,29 @@
 package net.taptech.demo.config;
 
+
+import net.taptech.demo.DemoMuleSpringBootApplication;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.utils.Bytes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.state.KeyValueStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
+import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
+import org.springframework.kafka.core.StreamsBuilderFactoryBean;
+
+import java.util.*;
 
 @Configuration
 @PropertySource("classpath:kafka-consumer.properties")
@@ -17,15 +35,15 @@ public class KafkaConfig {
     @Autowired
     private Environment env;
 
-    /*
+
     @Bean
     KStream<String, String> wordCountSource(StreamsBuilder builder){
-        KStream<String, String> source = builder.stream("streams-plaintext-input");
+        KStream<String, String> source = builder.stream("streams-numbers-count-input1");
         source.flatMapValues(value -> Arrays.asList(value.toLowerCase(Locale.getDefault()).split("\\W+")))
                 .groupBy((key, value) -> value)
                 .count(Materialized.<String, Long, KeyValueStore<Bytes, byte[]>>as("counts-store"))
                 .toStream()
-                .to("streams-wordcount-output", Produced.with(Serdes.String(), Serdes.Long()));
+                .to("streams-numbers-count-output1", Produced.with(Serdes.String(), Serdes.Long()));
         return source;
     }
 
@@ -53,5 +71,5 @@ public class KafkaConfig {
         return streams;
     }
 
-*/
+
 }
