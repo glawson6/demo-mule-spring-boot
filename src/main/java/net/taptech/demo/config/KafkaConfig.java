@@ -25,9 +25,9 @@ import org.springframework.kafka.core.StreamsBuilderFactoryBean;
 
 import java.util.*;
 
-@Configuration
-@PropertySource("classpath:kafka-consumer.properties")
-@PropertySource("classpath:kafka-producer.properties")
+//@Configuration
+//@PropertySource("classpath:kafka-consumer.properties")
+//@PropertySource("classpath:kafka-producer.properties")
 public class KafkaConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaConfig.class);

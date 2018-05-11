@@ -34,6 +34,17 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <transformer ref="recordMetadataListToJsonTransformer"/>
     </flow>
 
+    <flow name="mule-demo-stream-processing">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/stream" allowedMethods="GET, POST" doc:name="HTTP"/>
+        <set-variable variableName="recordKey" value="#[java.util.UUID.randomUUID().toString()]"/>
+        <transformer ref="bufferedInputStreamToStreamTransformer"/>
+        <processor ref="streamSplitter"/>
+        <logger message="After streamSplitter message #[message] arrived: #[payload]" category="org.mule.module.kafka" level="INFO"
+                        doc:name="Consumed message logger"/>
+        <processor ref="streamAggregator"/>
+        <object-to-string-transformer/>
+    </flow>
+
     <flow name="mule-demo-parallel-processing">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/parallel" allowedMethods="POST" doc:name="HTTP"/>
         <object-to-string-transformer/>
@@ -75,6 +86,13 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <logger message="***CapitalCased #[payload] at #[System.currentTimeMillis()]" level="INFO" />
     </sub-flow>
 
+    <sub-flow name="aggregate-collection">
+        <collection-aggregator timeout="30000" failOnTimeout="false" doc:name="Collection Aggregator">
+            <expression-message-info-mapping
+                    messageIdExpression="#[message.id]" correlationIdExpression="#[message.getCorrelationId()]" />
+        </collection-aggregator>
+    </sub-flow>
+
     <flow name="streams-capitlized-output-flow">
         <vm:inbound-endpoint path="one-string-for-processing-vm-2" doc:name="receive-one-string-to-convert-to-capital-case-vm" />
         <copy-properties propertyName="MULE*"/>
@@ -86,7 +104,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
     </flow>
 
     <flow name="streams-capitlized-input-flow">
-        <kafka:consumer config-ref="kafka-config" topic="streams-capitlized-input" threads="10"
+        <kafka:consumer config-ref="kafka-config" topic="streams-capitlized-input" threads="1"
                         propertyFileOverrides="kafka-single-poll-consumer.properties"/>
         <foreach doc:name="Foreach" collection="#[payload.iterator()]">
             <!--logger message="payload => #[payload] consumer received from topic [#[payload.topic()]] key => [#[payload.key()]] value => [#[payload.value()]] "
